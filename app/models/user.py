@@ -1,10 +1,20 @@
 from sqlalchemy import String, Boolean, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime, timezone
+from passlib.context import CryptContext
 
-from core.database import Base
+from ..core.database import Base
 
-class UserModel(Base):
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+class PasswordMixin:
+    def verify_password(self, plain_password: str) -> bool:
+        return pwd_context.verify(plain_password, self.hashed_password)
+
+    def set_password(self, plain_text: str) -> None:
+        self.hashed_password = pwd_context.hash(plain_text)
+
+class UserModel(Base, PasswordMixin):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
