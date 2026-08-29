@@ -7,3 +7,6 @@ class UserRegisterSchema(BaseModel):
 class UserloginSchema(BaseModel):
     username: str = Field(min_length=3, max_length=250)
     password: str = Field(min_length=8, max_length=72, examples=["a/@1234567"])
+
+class UserRefreshTokenSchema(BaseModel):
+    token: str = Field(description="Refresh token of user")
