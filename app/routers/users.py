@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..schemas.user import UserRegisterSchema
+from app.auth.jwt_auth import (
+    generate_access_token, generate_refresh_token)
+from ..schemas.user import UserRegisterSchema, UserloginSchema
 from ..core.database import get_db
 from ..models.user import UserModel
 
@@ -33,3 +35,32 @@ def register(
     db.commit()
 
     return {"detail": "user registered successfully"}
+
+@router.post(
+        "/login",
+        status_code=status.HTTP_200_OK
+    )
+def login(
+    request: UserloginSchema,
+    db: Session = Depends(get_db)
+):
+    # Checking if user already exists
+
+    user_obj = db.query(UserModel).filter_by(
+        username=request.username.lower()
+    ).first()
+
+    if not user_obj or not user_obj.verify_password(request.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Username or password is incorrect!"
+        )
+
+    access_token = generate_access_token(user_obj.id)
+    refresh_token = generate_refresh_token(user_obj.id)
+    
+    return {
+        "detail": "user login successfully",
+        "access_token": access_token,
+        "refresh_token": refresh_token
+    }
