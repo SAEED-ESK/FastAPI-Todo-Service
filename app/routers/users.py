@@ -2,8 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.auth.jwt_auth import (
-    generate_access_token, generate_refresh_token)
-from ..schemas.user import UserRegisterSchema, UserloginSchema
+    generate_access_token,
+    generate_refresh_token,
+    get_authenticated_user,
+    decode_refresh_token
+)
+from ..schemas.user import (
+    UserRefreshTokenSchema,
+    UserRegisterSchema,
+    UserloginSchema)
 from ..core.database import get_db
 from ..models.user import UserModel
 
@@ -64,3 +71,24 @@ def login(
         "access_token": access_token,
         "refresh_token": refresh_token
     }
+
+@router.get("/me")
+def get_me(
+    current_user: UserModel = Depends(get_authenticated_user)
+):
+    return {
+        "id": current_user.id,
+        "username": current_user.username
+    }
+
+@router.post("/refresh-token")
+def user_refresh_token(
+    request: UserRefreshTokenSchema,
+    db: Session = Depends(get_db)
+):
+    user_id = decode_refresh_token(request.token)
+    access_token = generate_access_token(user_id)
+    return {
+            "detail": "user access token successfully generate",
+            "access_token": access_token
+        } 
