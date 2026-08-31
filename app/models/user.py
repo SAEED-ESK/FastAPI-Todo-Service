@@ -12,8 +12,6 @@ class PasswordMixin:
         return pwd_context.verify(plain_password, self.hashed_password)
 
     def set_password(self, plain_text: str) -> None:
-        print(type(plain_text))
-        print(len(plain_text))
         self.hashed_password = pwd_context.hash(plain_text)
 
 class UserModel(Base, PasswordMixin):

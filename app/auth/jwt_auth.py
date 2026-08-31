@@ -68,7 +68,7 @@ def get_authenticated_user(
         )
 
 
-def generate_access_token(user_id: int, expires_in: int = 300) -> str:
+def generate_access_token(user_id: int, expires_in: int = 3600) -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "type": "access",
