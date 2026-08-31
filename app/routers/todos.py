@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, or_
 from sqlalchemy.orm import Session
+from enum import Enum
+
 from app.models.todo import TodoModel
+from app.models.user import UserModel
 from app.schemas.todo import TodoCreate, TodoResponse, TodoUpdate
 from app.core.database import get_db
+from app.auth.jwt_auth import get_authenticated_user
 
-from enum import Enum
 
 class SortField(str, Enum):
     id = "id"
@@ -20,18 +23,19 @@ router = APIRouter()
 
 @router.get("/", response_model=list[TodoResponse])
 def get_todos(
-    is_compeleted: bool | None = None,
+    is_completed: bool | None = None,
     search: str | None = None,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=2, ge=1, le=20),
     sort_by: SortField = Query(default=SortField.id),
     sort_order: SortOrder = Query(default=SortOrder.asc),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(get_authenticated_user)
 ):
-    statement = select(TodoModel)
-    if is_compeleted is not None:
+    statement = select(TodoModel).filter_by(user_id=user.id)
+    if is_completed is not None:
         statement = statement.where(
-            TodoModel.is_completed == is_compeleted
+            TodoModel.is_completed == is_completed
         )
     if search:
         statement = statement.where(
@@ -59,10 +63,15 @@ def get_todos(
     return todos
 
 @router.post("/", response_model=TodoResponse)
-def create_todo(todo: TodoCreate, db: Session = Depends(get_db)):
+def create_todo(
+    todo: TodoCreate,
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(get_authenticated_user)
+):
     new_todo = TodoModel(
         title=todo.title,
-        description=todo.description
+        description=todo.description,
+        user_id=user.id
     )
     db.add(new_todo)
     db.commit()
@@ -72,8 +81,15 @@ def create_todo(todo: TodoCreate, db: Session = Depends(get_db)):
 
 # GET /todos/5
 @router.get("/{todo_id}", response_model=TodoResponse)
-def get_todo(todo_id:int, db: Session = Depends(get_db)):
-    todo = db.scalar(select(TodoModel).where(TodoModel.id == todo_id))
+def get_todo(
+    todo_id:int,
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(get_authenticated_user)
+):
+    todo = db.scalar(select(TodoModel).where(
+        TodoModel.user_id == user.id,
+        TodoModel.id == todo_id)
+    )
     if todo is None:
         raise HTTPException(
             status_code=404,
@@ -86,9 +102,13 @@ def get_todo(todo_id:int, db: Session = Depends(get_db)):
 def edit_todo(
     todo_id:int,
     todo_data: TodoUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(get_authenticated_user)
 ):
-    todo = db.scalar(select(TodoModel).where(TodoModel.id == todo_id))
+    todo = db.scalar(select(TodoModel).where(
+        TodoModel.user_id == user.id,
+        TodoModel.id == todo_id)
+    )
     if todo is None:
         raise HTTPException(
             status_code=404,
@@ -109,9 +129,13 @@ def edit_todo(
 @router.delete("/{todo_id}")
 def delete_todo(
     todo_id:int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(get_authenticated_user)
 ):
-    todo = db.scalar(select(TodoModel).where(TodoModel.id == todo_id))
+    todo = db.scalar(select(TodoModel).where(
+        TodoModel.user_id == user.id,
+        TodoModel.id == todo_id)
+    )
     if todo is None:
         raise HTTPException(
             status_code=404,
