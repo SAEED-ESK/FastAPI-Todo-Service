@@ -96,32 +96,32 @@ def decode_refresh_token(token):
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed! user_id is not in token"
+                detail=AccountMessages.USER_ID_NOT_IN_TOKEN
             )
         if decoded.get("type") != "refresh":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed! token type is invalid"
-            )
-        if datetime.now() > datetime.fromtimestamp(decoded.get("exp")):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed! token expired"
+                detail=AccountMessages.INVALID_TOKEN_TYPE
             )
         return user_id
 
     except jwt.InvalidSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed, invalid signature",
+            detail=AccountMessages.INVALID_TOKEN
         )
     except jwt.DecodeError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed, decode failed",
+            detail=AccountMessages.INVALID_TOKEN
         )
-    except Exception as e:
+    except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Authentication failed, {e}",
+            detail=AccountMessages.TOKEN_EXPIRED
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AccountMessages.INVALID_TOKEN
         )
