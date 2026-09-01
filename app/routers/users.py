@@ -7,12 +7,13 @@ from app.auth.jwt_auth import (
     get_authenticated_user,
     decode_refresh_token
 )
-from ..schemas.user import (
+from app.schemas.user import (
     UserRefreshTokenSchema,
     UserRegisterSchema,
-    UserloginSchema)
-from ..core.database import get_db
-from ..models.user import UserModel
+    UserloginSchema,
+    LoginResponseSchema)
+from app.core.database import get_db
+from app.models.user import UserModel
 
 router = APIRouter()
 
@@ -45,7 +46,8 @@ def register(
 
 @router.post(
         "/login",
-        status_code=status.HTTP_200_OK
+        status_code=status.HTTP_200_OK,
+        response_model=LoginResponseSchema
     )
 def login(
     request: UserloginSchema,
@@ -61,6 +63,12 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Username or password is incorrect!"
+        )
+
+    if not user_obj.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User is inactive"
         )
 
     access_token = generate_access_token(user_obj.id)
