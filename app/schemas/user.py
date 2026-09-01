@@ -10,3 +10,12 @@ class UserloginSchema(BaseModel):
 
 class UserRefreshTokenSchema(BaseModel):
     token: str = Field(description="Refresh token of user")
+
+class LoginResponseSchema(BaseModel):
+    detail: str
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+    class Config:
+        from_attributes = True
