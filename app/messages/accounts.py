@@ -9,6 +9,7 @@ class AccountMessages:
     INVALID_TOKEN = "Authentication failed, invalid token"
     TOKEN_EXPIRED = "Token has expired"
     INVALID_TOKEN_TYPE = "Authentication failed, token type is invalid"
+    TOKEN_REVOKED = "Token has been revoked"
     USER_ID_NOT_IN_TOKEN = (
         "Authentication failed, user_id is not in token"
     )

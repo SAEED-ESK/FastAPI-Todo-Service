@@ -7,10 +7,11 @@ from datetime import datetime, timedelta, timezone
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.models.user import UserModel
+from app.models.user import UserModel, RevokedToken
 from app.messages.accounts import AccountMessages
 
 import jwt
+import uuid
 
 security = HTTPBearer()
 
@@ -26,11 +27,17 @@ def get_authenticated_user(
             algorithms=["HS256"]
         )
         user_id = decoded.get("user_id", None)
-        if user_id is None:
+        jti = decoded.get("jti", None)
+        if user_id is None or jti is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=AccountMessages.USER_ID_NOT_IN_TOKEN
             )
+        revoked = db.query(RevokedToken).filter(RevokedToken.jti == jti).first()
+        if revoked:
+            raise HTTPException(
+                status_code=401,
+                detail=AccountMessages.TOKEN_REVOKED)
         if decoded.get("type") != "access":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -71,6 +78,7 @@ def generate_access_token(user_id: int, expires_in: int = 3600) -> str:
         "type": "access",
         "iat": now,
         "exp": now + timedelta(seconds=expires_in),
+        "jti": str(uuid.uuid4()),
         "user_id": user_id
     }
     return jwt.encode(payload, settings.AUTH_JWT_SECRET_KEY, algorithm="HS256")
