@@ -114,11 +114,15 @@ def logout(
 ):
     token = credentials.credentials
     payload = decode_access_token(token)
+    jti = payload["jti"]
 
-    # ذخیره jti به‌عنوان revoke‌شده
+    existing = db.query(RevokedToken).filter(RevokedToken.jti == jti).first()
+    if existing:
+        return {"detail": AccountMessages.LOGGED_OUT_SUCCESSFULLY}
+
     revoked_token = RevokedToken(
         jti=payload["jti"],
-        expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+        expired_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
     )
     db.add(revoked_token)
     db.commit()
