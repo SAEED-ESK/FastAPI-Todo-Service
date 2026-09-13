@@ -14,6 +14,7 @@ from app.schemas.user import (
     LoginResponseSchema)
 from app.core.database import get_db
 from app.models.user import UserModel
+from app.messages.accounts import AccountMessages
 
 router = APIRouter()
 
@@ -33,7 +34,7 @@ def register(
     ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="User already exists!"
+            detail=AccountMessages.USER_ALREADY_EXISTS
         )
 
     # Password hashing
@@ -42,7 +43,7 @@ def register(
     db.add(user_obj)
     db.commit()
 
-    return {"detail": "user registered successfully"}
+    return {"detail": AccountMessages.REGISTERED_SUCCESSFULLY}
 
 @router.post(
         "/login",
@@ -62,20 +63,20 @@ def login(
     if not user_obj or not user_obj.verify_password(request.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Username or password is incorrect!"
+            detail=AccountMessages.INVALID_CREDENTIALS
         )
 
     if not user_obj.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User is inactive"
+            detail=AccountMessages.USER_INACTIVE
         )
 
     access_token = generate_access_token(user_obj.id)
     refresh_token = generate_refresh_token(user_obj.id)
     
     return {
-        "detail": "user login successfully",
+        "detail": AccountMessages.LOGGED_IN_SUCCESSFULLY,
         "access_token": access_token,
         "refresh_token": refresh_token
     }
@@ -97,6 +98,5 @@ def user_refresh_token(
     user_id = decode_refresh_token(request.token)
     access_token = generate_access_token(user_id)
     return {
-            "detail": "user access token successfully generate",
             "access_token": access_token
         } 

@@ -5,6 +5,7 @@ from enum import Enum
 
 from app.models.todo import TodoModel
 from app.models.user import UserModel
+from app.messages.todos import TodoMessages
 from app.schemas.todo import TodoCreate, TodoResponse, TodoUpdate
 from app.core.database import get_db
 from app.auth.jwt_auth import get_authenticated_user
@@ -93,7 +94,7 @@ def get_todo(
     if todo is None:
         raise HTTPException(
             status_code=404,
-            detail="Todo not found!"
+            detail=TodoMessages.TODO_NOT_FOUND
         )
     
     return todo
@@ -112,7 +113,7 @@ def edit_todo(
     if todo is None:
         raise HTTPException(
             status_code=404,
-            detail="Todo not found!"
+            detail=TodoMessages.TODO_NOT_FOUND
         )
 
     update_data = todo_data.model_dump(
@@ -139,15 +140,10 @@ def delete_todo(
     if todo is None:
         raise HTTPException(
             status_code=404,
-            detail="Todo not found!"
+            detail=TodoMessages.TODO_NOT_FOUND
         )
 
     db.delete(todo)
     db.commit()
 
-    return {"message": "Todo deleted successfully!"}
-
-# GET /todos?completed=true
-# @router.get("/")
-# def root(completed: bool | None = None):
-#     return {"Completed": completed}
+    return {"detial": TodoMessages.TODO_DELETED_SUCCESSFULLY}
