@@ -133,3 +133,45 @@ def decode_refresh_token(token):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=AccountMessages.INVALID_TOKEN
         )
+    
+def decode_access_token(token):
+    try:
+        decoded = jwt.decode(
+            token,
+            settings.AUTH_JWT_SECRET_KEY,
+            algorithms=["HS256"]
+        )
+        jti = decoded.get("jti", None)
+        exp = decoded.get("exp", None)
+        if jti is None or exp is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=AccountMessages.INVALID_TOKEN
+            )
+        if decoded.get("type") != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=AccountMessages.INVALID_TOKEN_TYPE
+            )
+        return decoded
+
+    except jwt.InvalidSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AccountMessages.INVALID_TOKEN
+        )
+    except jwt.DecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AccountMessages.INVALID_TOKEN
+        )
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AccountMessages.TOKEN_EXPIRED
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AccountMessages.INVALID_TOKEN
+        )

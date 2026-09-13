@@ -1,22 +1,28 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
+from datetime import datetime, timezone
 
 from app.auth.jwt_auth import (
     generate_access_token,
     generate_refresh_token,
     get_authenticated_user,
-    decode_refresh_token
+    decode_refresh_token,
+    decode_access_token
 )
 from app.schemas.user import (
     UserRefreshTokenSchema,
     UserRegisterSchema,
     UserloginSchema,
     LoginResponseSchema)
+    
 from app.core.database import get_db
-from app.models.user import UserModel
+from app.models.user import UserModel, RevokedToken
 from app.messages.accounts import AccountMessages
 
 router = APIRouter()
+
+security = HTTPBearer()
 
 @router.post(
         "/register",
@@ -100,3 +106,21 @@ def user_refresh_token(
     return {
             "access_token": access_token
         } 
+
+@router.post("/logout")
+def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    payload = decode_access_token(token)
+
+    # ذخیره jti به‌عنوان revoke‌شده
+    revoked_token = RevokedToken(
+        jti=payload["jti"],
+        expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+    )
+    db.add(revoked_token)
+    db.commit()
+
+    return {"detail": AccountMessages.LOGGED_OUT_SUCCESSFULLY}
