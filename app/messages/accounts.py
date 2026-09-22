@@ -2,6 +2,7 @@ class AccountMessages:
     REGISTERED_SUCCESSFULLY = "Your account has been created successfully."
     LOGGED_IN_SUCCESSFULLY = "You have logged in successfully."
     LOGGED_OUT_SUCCESSFULLY = "You have been logged out successfully."
+    CHANGE_PASSWORD_SUCCESSFULLY = "Your password have been updated successfully."
 
     USER_ALREADY_EXISTS = "User already exists!"
     AUTHENTICATION_REQUIRED = "Authentication required"
