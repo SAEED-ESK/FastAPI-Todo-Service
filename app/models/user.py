@@ -34,3 +34,12 @@ class UserModel(Base, PasswordMixin):
     todos: Mapped[list["TodoModel"]]=relationship(
         back_populates="user"
     )
+
+class RevokedToken(Base):
+    __tablename__ = "revoked_tokens"
+
+    jti: Mapped[str] = mapped_column(primary_key=True)
+    expired_at: Mapped[datetime] = mapped_column(
+    DateTime(timezone=True),
+    nullable=False,
+    )

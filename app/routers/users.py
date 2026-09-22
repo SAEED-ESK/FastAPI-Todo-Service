@@ -1,22 +1,29 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
+from datetime import datetime, timezone
 
 from app.auth.jwt_auth import (
     generate_access_token,
     generate_refresh_token,
     get_authenticated_user,
-    decode_refresh_token
+    decode_refresh_token,
+    decode_access_token
 )
 from app.schemas.user import (
     UserRefreshTokenSchema,
     UserRegisterSchema,
     UserloginSchema,
-    LoginResponseSchema)
+    LoginResponseSchema,
+    UserChangePasswordSchema)
+    
 from app.core.database import get_db
-from app.models.user import UserModel
+from app.models.user import UserModel, RevokedToken
 from app.messages.accounts import AccountMessages
 
 router = APIRouter()
+
+security = HTTPBearer()
 
 @router.post(
         "/register",
@@ -83,12 +90,34 @@ def login(
 
 @router.get("/me")
 def get_me(
-    current_user: UserModel = Depends(get_authenticated_user)
+    current_user: UserModel = Depends(get_authenticated_user),
 ):
     return {
         "id": current_user.id,
         "username": current_user.username
     }
+
+@router.post("/change-password")
+def change_password(
+    request: UserChangePasswordSchema,
+    current_user: UserModel = Depends(get_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user.verify_password(request.current_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AccountMessages.INVALID_CREDENTIALS
+        )
+    if request.current_password == request.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=AccountMessages.NEW_PASSWORD_SAME_AS_OLD
+        )
+    
+    current_user.set_password(request.new_password)
+    db.commit()
+
+    return {"detail": AccountMessages.CHANGE_PASSWORD_SUCCESSFULLY}
 
 @router.post("/refresh-token")
 def user_refresh_token(
@@ -100,3 +129,25 @@ def user_refresh_token(
     return {
             "access_token": access_token
         } 
+
+@router.post("/logout")
+def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    jti = payload["jti"]
+
+    existing = db.query(RevokedToken).filter(RevokedToken.jti == jti).first()
+    if existing:
+        return {"detail": AccountMessages.LOGGED_OUT_SUCCESSFULLY}
+
+    revoked_token = RevokedToken(
+        jti=payload["jti"],
+        expired_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+    )
+    db.add(revoked_token)
+    db.commit()
+
+    return {"detail": AccountMessages.LOGGED_OUT_SUCCESSFULLY}
